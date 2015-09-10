@@ -12,8 +12,8 @@ var startWatcher = function (filePath, cb){
 	});
 };
 
-var message = function (filePath, str) {
-	fs.writeFile(filePath, data, 'utf8', cb);
+var message = function (filePath, str, cb) {
+	fs.writeFile(filePath, str, 'utf8', cb);
 };
 
 var unlisten = function (filePath) {
