@@ -41,6 +41,9 @@ var listen = function (fileName, cb) {
 
 
 var constructFullPath = function (filePath) {
+	if (filePath.indexOf(process.cwd()) == 0) {
+		return filePath;
+	}
 	return path.join(process.cwd(), filePath);
 };
 var ensureFileExists = function (filePath, cb) {
