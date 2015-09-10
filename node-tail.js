@@ -72,7 +72,7 @@ var appenedListener = function () {
 			return;
 		}
 		var str = '';
-		var stream = fs.createReadStream(fileName, {
+		var stream = fs.createReadStream(me.filePath, {
 			fd: fd,
 			start: me.from,
 			encoding: me.encoding
@@ -88,7 +88,9 @@ var appenedListener = function () {
 			me.from = me.from + str.length;
 			str = str.split('\n');
 			str.forEach(function (str) {
-				cb(null, str);
+				if (str) {
+					me.listener(null, str);
+				}
 			});
 		});
 	});
@@ -98,7 +100,12 @@ var connection = function (filePath) {
 	this.filePath = filePath;
 	this.from = 0;
 };
-connection.prototype.sub = function (_opts, cb) {
+connection.prototype._startWatch = function (cb) {
+	var me = this;
+	fs.watchFile(me.filePath, me.opts.watch, me.watcher);
+	cb && cb();
+};
+connection.prototype.sub = function (listener, _opts, cb) {
 	/*
 	_opts: {
 		onAppending, -- listen for appending lines, not whole file
@@ -117,10 +124,12 @@ connection.prototype.sub = function (_opts, cb) {
 			interval: 1000
 		}
 	};
+	var me = this;
 	if (typeof _opts == 'function') {
-		opts.listener = _opts;
-	}
-	if (Object.prototype.toString.call(_opts) == '[object Object]') {
+		cb = _opts;
+	} else if (typeof _opts == 'boolean') {
+		opts.onAppending = !!_opts;
+	} else if (Object.prototype.toString.call(_opts) == '[object Object]') {
 		if (typeof _opts.onAppending == 'boolean') {
 			opts.onAppending = !!_opts.onAppending;
 		}
@@ -133,31 +142,28 @@ connection.prototype.sub = function (_opts, cb) {
 			}
 		}
 		if (typeof opts.from == 'number') {
-			this.from = 0 + opts.from;
-		}
-		if (typeof _opts.listener == 'function') {
-			opts.listener = _opts.listener;
+			me.from = 0 + opts.from;
 		}
 	}
-	if (!opts.listener) {
+	if (!listener) {
 		cb && cb('no listener', null);
 		return;
 	}
-	this.opts = opts;
-	this.listener = opts.listener;
+	me.opts = opts;
+	me.listener = listener;
 	if (opts.onAppending) {
-		this.watcher = appenedListener.bind(this);
-		fs.stat(fileName, function (err, stats) {
+		me.watcher = appenedListener.bind(me);
+		fs.stat(me.filePath, function (err, stats) {
 			if (err) {
-				console.log('unable to read stats of', fileName);
+				console.log('unable to read stats of', me.filePath);
 				return;
 			}
-			this.from = stats.size;
-			fs.watchFile(this.filePath, opts.watch, this.watcher);
+			me.from = stats.size;
+			me._startWatch(cb);
 		});
 	} else {
 		this.watcher = replaceListener.bind(this);
-		fs.watchFile(this.filePath, opts.watch, this.watcher);
+		me._startWatch(cb);
 	}
 };
 connection.prototype.pub = function (data, cb) {
