@@ -1,2 +1,2 @@
 # node-tail
-another one simple tail realization for node.js
+another one simple tail watcher realization for node.js
